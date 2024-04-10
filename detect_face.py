@@ -72,11 +72,11 @@ def show_results(img, xyxy, conf, landmarks, class_num):
     for i in range(5):
         point_x = int(landmarks[2 * i])
         point_y = int(landmarks[2 * i + 1])
-        cv2.circle(img, (point_x, point_y), tl+1, clors[i], -1)
+        cv2.circle(img, (point_x, point_y), tl+1, clors[2], -1)
 
-    tf = max(tl - 1, 1)  # font thickness
-    label = str(conf)[:5]
-    cv2.putText(img, label, (x1, y1 - 2), 0, tl / 3, [225, 255, 255], thickness=tf, lineType=cv2.LINE_AA)
+    # tf = max(tl - 1, 1)  # font thickness
+    # label = str(conf)[:5]
+    #cv2.putText(img, label, (x1, y1 - 2), 0, tl / 3, [225, 255, 255], thickness=tf, lineType=cv2.LINE_AA)
     return img
 
 
@@ -87,8 +87,8 @@ def detect(
     project,
     name,
     exist_ok,
-    save_img,
-    view_img
+    save_img=True,
+    view_img=False
 ):
     # Load model
     img_size = 640
@@ -97,8 +97,11 @@ def detect(
     imgsz=(640, 640)
     
     # Directories
-    save_dir = increment_path(Path(project) / name, exist_ok=exist_ok)  # increment run
-    Path(save_dir).mkdir(parents=True, exist_ok=True)  # make dir
+    # save_dir = increment_path(Path(project) / name, exist_ok=exist_ok)  # increment run
+    save_dir = project
+    #Path(save_dir).mkdir(parents=True, exist_ok=True)  # make dir
+    os.makedirs(save_dir, exist_ok=True)
+
 
     is_file = Path(source).suffix[1:] in (img_formats + vid_formats)
     is_url = source.lower().startswith(('rtsp://', 'rtmp://', 'http://', 'https://'))
@@ -110,7 +113,7 @@ def detect(
         dataset = LoadStreams(source, img_size=imgsz)
         bs = 1  # batch_size
     else:
-        print('loading images', source)
+        print('loading images', source)  # source 应该是一个jpg 路径。
         dataset = LoadImages(source, img_size=imgsz)
         bs = 1  # batch_size
     vid_path, vid_writer = [None] * bs, [None] * bs
@@ -184,7 +187,7 @@ def detect(
                     
             # Save results (image with detections)
             if save_img:
-                if dataset.mode == 'image':
+                if dataset.mode == 'image': # 如果是图像直接存储即可
                     cv2.imwrite(save_path, im0)
                 else:  # 'video' or 'stream'
                     if vid_path[i] != save_path:  # new video
@@ -219,7 +222,13 @@ if __name__ == '__main__':
     parser.add_argument('--save-img', action='store_true', help='save results')
     parser.add_argument('--view-img', action='store_true', help='show results')
     opt = parser.parse_args()
-    
+    opt.weights = "/code/wujilong/code/yolov5-face/runs/train/exp3/weights/last.pt"
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model = load_model(opt.weights, device)
-    detect(model, opt.source, device, opt.project, opt.name, opt.exist_ok, opt.save_img, opt.view_img)
+    opt.project = "/code/wujilong/code/yolov5-face/data/widerface/cc"
+    # valdir = "/code/wujilong/code/yolov5-face/data/widerface/faceval/val/images"
+    # valnames = os.listdir(valdir)[:100]
+    # for valname in valnames:
+    # opt.source = os.path.join(valdir, valname)
+    opt.source =  "/code/wujilong/code/yolov5-face/data/widerface/cc.jpg"
+    detect(model, opt.source, device, opt.project, opt.name, opt.exist_ok)
