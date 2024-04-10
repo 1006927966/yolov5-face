@@ -36,10 +36,19 @@ def get_hash(files):
     # Returns a single hash value of a list of files
     return sum(os.path.getsize(f) for f in files if os.path.isfile(f))
 
+# 基于图像文件获取标签文件
 def img2label_paths(img_paths):
     # Define label paths as a function of image paths
     sa, sb = os.sep + 'images' + os.sep, os.sep + 'labels' + os.sep  # /images/, /labels/ substrings
     return [x.replace(sa, sb, 1).replace('.' + x.split('.')[-1], '.txt') for x in img_paths]
+
+# def img2labelfiles(img_paths): # 存储形式xx/imgaes   xx/labels 命名一个jpg一个txt
+#     labelpaths = []
+#     for imgpath in img_paths:
+#         labelpath = imgpath.replace("images", "labels")
+#         labelpath = labelpath.replace("jpg", "txt")
+#         labelpaths.append(labelpath)
+#     return labelpaths
 
 def exif_size(img):
     # Returns exif-corrected PIL size
@@ -55,10 +64,13 @@ def exif_size(img):
 
     return s
 
+
+# 基于imgdir 加载训练模型
 def create_dataloader(path, imgsz, batch_size, stride, opt, hyp=None, augment=False, cache=False, pad=0.0, rect=False,
                       rank=-1, world_size=1, workers=8, image_weights=False, quad=False, prefix=''):
     # Make sure only the first process in DDP process the dataset first, and the following others can use the cache
     with torch_distributed_zero_first(rank):
+        # 只获取数据，不处理数据 也是用的imgdir
         dataset = LoadFaceImagesAndLabels(path, imgsz, batch_size,
                                       augment=augment,  # augment images
                                       hyp=hyp,  # augmentation hyperparameters
@@ -80,6 +92,7 @@ def create_dataloader(path, imgsz, batch_size, stride, opt, hyp=None, augment=Fa
                         num_workers=nw,
                         sampler=sampler,
                         pin_memory=True,
+                        # 处理数据的函数
                         collate_fn=LoadFaceImagesAndLabels.collate_fn4 if quad else LoadFaceImagesAndLabels.collate_fn)
     return dataloader, dataset
 class InfiniteDataLoader(torch.utils.data.dataloader.DataLoader):
@@ -130,7 +143,7 @@ class LoadFaceImagesAndLabels(Dataset):  # for training/testing
             for p in path if isinstance(path, list) else [path]:
                 p = Path(p)  # os-agnostic
                 if p.is_dir():  # dir
-                    f += glob.glob(str(p / '**' / '*.*'), recursive=True)
+                    f += glob.glob(str(p / '**' / '*.*'), recursive=True) # 基于图像文件夹获取图像文件
                 elif p.is_file():  # file
                     with open(p, 'r') as t:
                         t = t.read().strip().splitlines()
@@ -138,7 +151,13 @@ class LoadFaceImagesAndLabels(Dataset):  # for training/testing
                         f += [x.replace('./', parent) if x.startswith('./') else x for x in t]  # local to global path
                 else:
                     raise Exception('%s does not exist' % p)
+            # 找到了图像文件
             self.img_files = sorted([x.replace('/', os.sep) for x in f if x.split('.')[-1].lower() in img_formats])
+            #
+
+
+
+
             assert self.img_files, 'No images found'
         except Exception as e:
             raise Exception('Error loading data from %s: %s\nSee %s' % (path, e, help_url))
@@ -230,6 +249,7 @@ class LoadFaceImagesAndLabels(Dataset):  # for training/testing
                 if os.path.isfile(lb_file):
                     nf += 1  # label found
                     with open(lb_file, 'r') as f:
+                        # label 的间隔符是空格
                         l = np.array([x.split() for x in f.read().strip().splitlines()], dtype=np.float32)  # labels
                     if len(l):
                         assert l.shape[1] == 15, 'labels require 15 columns each'
@@ -298,7 +318,7 @@ class LoadFaceImagesAndLabels(Dataset):  # for training/testing
             labels = []
             x = self.labels[index]
             if x.size > 0:
-                # Normalized xywh to pixel xyxy format
+                # Normalized xywh to pixel xyxy format # 从这里来看其实train应该也是归一之后的txt文件
                 labels = x.copy()
                 labels[:, 1] = ratio[0] * w * (x[:, 1] - x[:, 3] / 2) + pad[0]  # pad width
                 labels[:, 2] = ratio[1] * h * (x[:, 2] - x[:, 4] / 2) + pad[1]  # pad height

@@ -4,8 +4,8 @@ import numpy as np
 import shutil
 import sys
 from tqdm import tqdm
-
-
+# 这里只记录了，xyxy 没有landmark的信息。
+# 将xywh转化成xyxy的形式。
 def xywh2xxyy(box):
     x1 = box[0]
     y1 = box[1]
@@ -13,7 +13,7 @@ def xywh2xxyy(box):
     y2 = box[1] + box[3]
     return x1, x2, y1, y2
 
-
+# xywh 都基于图像宽高归一化
 def convert(size, box):
     dw = 1. / (size[0])
     dh = 1. / (size[1])

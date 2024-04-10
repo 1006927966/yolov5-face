@@ -5,32 +5,32 @@ import torch.utils.data as data
 import cv2
 import numpy as np
 
-
+# 训练模型的数据集合
 class WiderFaceDetection(data.Dataset):
-    def __init__(self, txt_path, preproc=None):
+    def __init__(self, txt_path, preproc=None): # 输入是txt 文件
         self.preproc = preproc
         self.imgs_path = []
         self.words = []
         f = open(txt_path, 'r')
         lines = f.readlines()
-        isFirst = True
+        isFirst = True  # 是不是图像的开头
         labels = []
         for line in lines:
             line = line.rstrip()
-            if line.startswith('#'):
-                if isFirst is True:
+            if line.startswith('#'): # 如果是图像开头记录图像路径
+                if isFirst is True: #如果是那么编程False
                     isFirst = False
                 else:
-                    labels_copy = labels.copy()
+                    labels_copy = labels.copy() # 如果不是那么将label进行汇总
                     self.words.append(labels_copy)
                     labels.clear()
-                path = line[2:]
-                path = txt_path.replace('label.txt', 'images/') + path
+                path = line[2:] # 从第二个字符开始算
+                path = txt_path.replace('label.txt', 'images/') + path # 获取图像路径
                 self.imgs_path.append(path)
             else:
                 line = line.split(' ')
-                label = [float(x) for x in line]
-                labels.append(label)
+                label = [float(x) for x in line] # 其实就是基于txt获取标签
+                labels.append(label) #获取飞图像路径标签
 
         self.words.append(labels)
 
@@ -41,8 +41,8 @@ class WiderFaceDetection(data.Dataset):
         img = cv2.imread(self.imgs_path[index])
         height, width, _ = img.shape
 
-        labels = self.words[index]
-        annotations = np.zeros((0, 15))
+        labels = self.words[index] #获取标签
+        annotations = np.zeros((0, 15)) # 获取标注
         if len(labels) == 0:
             return annotations
         for idx, label in enumerate(labels):
@@ -64,7 +64,7 @@ class WiderFaceDetection(data.Dataset):
             annotation[0, 11] = label[14]  # l3_y
             annotation[0, 12] = label[16]  # l4_x
             annotation[0, 13] = label[17]  # l4_y
-            if annotation[0, 4] < 0:
+            if annotation[0, 4] < 0:  # 标注是否可见
                 annotation[0, 14] = -1
             else:
                 annotation[0, 14] = 1
